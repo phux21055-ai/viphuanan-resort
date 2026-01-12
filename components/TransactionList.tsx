@@ -16,13 +16,14 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
   const filteredTransactions = transactions.filter(tx => {
     const guestName = tx.guestData ? `${tx.guestData.firstNameTH} ${tx.guestData.lastNameTH}`.toLowerCase() : '';
     const guestNameEN = tx.guestData ? `${tx.guestData.firstNameEN} ${tx.guestData.lastNameEN}`.toLowerCase() : '';
-    
-    const matchesSearch = 
-      tx.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
+
+    const matchesSearch =
+      tx.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tx.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
       guestName.includes(searchTerm.toLowerCase()) ||
       guestNameEN.includes(searchTerm.toLowerCase()) ||
-      tx.guestData?.idNumber?.includes(searchTerm);
+      tx.guestData?.idNumber?.includes(searchTerm) ||
+      tx.amount.toString().includes(searchTerm);
 
     const matchesType = filterType === 'ALL' || tx.type === filterType;
     return matchesSearch && matchesType;

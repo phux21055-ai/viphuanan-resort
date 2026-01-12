@@ -24,6 +24,7 @@ import Settings from './components/Settings';
 import CameraCapture from './components/CameraCapture';
 import { processReceiptOCR } from './services/geminiService';
 import { saveToMongo, loadFromMongo } from './services/mongoService';
+import toast, { Toaster } from 'react-hot-toast';
 
 const STORAGE_KEY = 'resort_finance_data_v2.7';
 const SETTINGS_KEY = 'resort_settings_v2.7';
@@ -65,8 +66,10 @@ const App: React.FC = () => {
   const [isQuickProcessing, setIsQuickProcessing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [pieMode, setPieMode] = useState<TransactionType>(TransactionType.EXPENSE);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Auto-Unlock System: Check every minute
+  // Auto-Unlock System: Check every minute (optimized interval)
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -75,7 +78,7 @@ const App: React.FC = () => {
         const newBookings = prev.map(b => {
           if (b.status === 'locked' && b.lockedUntil && new Date(b.lockedUntil) < now) {
             changed = true;
-            return { ...b, status: 'pending' as const }; // Or remove, but let's just mark it pending/cancelled
+            return { ...b, status: 'pending' as const };
           }
           return b;
         });
@@ -84,7 +87,7 @@ const App: React.FC = () => {
         if (filtered.length !== prev.length) changed = true;
         return changed ? filtered : prev;
       });
-    }, 10000); // Check every 10 seconds for more responsiveness
+    }, 60000); // Check every 60 seconds - more battery efficient
     return () => clearInterval(interval);
   }, []);
 
@@ -92,55 +95,50 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
+        setIsLoading(true);
         const mongoData = await loadFromMongo();
         if (mongoData && mongoData.transactions) {
           setTransactions(mongoData.transactions);
           setBookings(mongoData.bookings || []);
           setSettings(mongoData.settings || DEFAULT_SETTINGS);
+          toast.success('โหลดข้อมูลจาก Cloud สำเร็จ');
         }
       } catch (error) {
         console.error('Failed to load from MongoDB:', error);
+        toast.error('ไม่สามารถโหลดข้อมูลจาก Cloud ได้');
+      } finally {
+        setIsLoading(false);
       }
     };
     loadData();
   }, []);
 
-  // Save to localStorage and MongoDB when data changes
+  // Save to localStorage and MongoDB when data changes (unified to prevent race condition)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-
-    // Auto-sync to MongoDB (debounced)
-    const timer = setTimeout(() => {
-      saveToMongo({ transactions, bookings, settings }).catch(console.error);
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [transactions]);
-
-  useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-
-    const timer = setTimeout(() => {
-      saveToMongo({ transactions, bookings, settings }).catch(console.error);
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [settings]);
-
-  useEffect(() => {
     localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
 
-    const timer = setTimeout(() => {
-      saveToMongo({ transactions, bookings, settings }).catch(console.error);
+    // Auto-sync to MongoDB (debounced) - single timer to prevent conflicts
+    const timer = setTimeout(async () => {
+      setIsSyncing(true);
+      try {
+        await saveToMongo({ transactions, bookings, settings });
+        setIsSyncing(false);
+      } catch (error) {
+        console.error('Sync failed:', error);
+        setIsSyncing(false);
+        toast.error('ไม่สามารถซิงค์ข้อมูลได้');
+      }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [bookings]);
+  }, [transactions, bookings, settings]);
 
   const addTransaction = (t: Omit<Transaction, 'id'>) => {
     const newTx: Transaction = {
       ...t,
-      id: Math.random().toString(36).substr(2, 9),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       isReconciled: settings.autoReconcile || t.isReconciled
     };
     setTransactions(prev => [newTx, ...prev]);
@@ -159,17 +157,26 @@ const App: React.FC = () => {
         isReconciled: false,
         imageUrl: `data:image/jpeg;base64,${base64}`
       });
-      alert("บันทึกรายการจากการถ่ายภาพสำเร็จ!");
+      toast.success("บันทึกรายการจากการถ่ายภาพสำเร็จ!");
     } catch (err: any) {
-      alert("AI ประมวลผลผิดพลาด: " + err.message);
+      toast.error("AI ประมวลผลผิดพลาด: " + err.message);
     } finally {
       setIsQuickProcessing(false);
     }
   };
 
   const deleteTransaction = (id: string) => {
+    const deletedTx = transactions.find(t => t.id === id);
     if (window.confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
       setTransactions(prev => prev.filter(t => t.id !== id));
+      toast.success('ลบรายการสำเร็จ', {
+        action: {
+          label: 'เลิกทำ',
+          onClick: () => {
+            if (deletedTx) setTransactions(prev => [deletedTx, ...prev]);
+          }
+        }
+      } as any);
     }
   };
 
@@ -380,14 +387,30 @@ const App: React.FC = () => {
       .sort((a, b) => b.value > a.value ? 1 : b.value < a.value ? -1 : 0);
   }, [transactions, pieMode]);
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 font-bold">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f8fafc] pb-24 md:pb-0 md:pl-64">
+      <Toaster position="top-right" />
+
       <nav className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 p-6 fixed left-0 top-0 h-full z-20">
         <div className="flex items-center gap-3 mb-10">
           <div className="bg-indigo-600 text-white p-2.5 rounded-2xl shadow-xl shadow-indigo-100 font-black">SR</div>
           <div>
             <h1 className="font-bold text-slate-800 text-lg leading-tight truncate w-32">{settings.resortName}</h1>
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Finance Hub v2.7</p>
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter flex items-center gap-1">
+              Finance Hub v2.7
+              {isSyncing && <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>}
+            </p>
           </div>
         </div>
         <div className="space-y-1.5 flex-1">

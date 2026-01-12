@@ -22,6 +22,7 @@ import ManualEntry from './components/ManualEntry';
 import FrontDesk from './components/FrontDesk';
 import Settings from './components/Settings';
 import CameraCapture from './components/CameraCapture';
+import OTAImport from './components/OTAImport';
 import { processReceiptOCR } from './services/geminiService';
 import { saveToMongo, loadFromMongo } from './services/mongoService';
 import toast, { Toaster } from 'react-hot-toast';
@@ -258,6 +259,17 @@ const App: React.FC = () => {
     toast.success('อัพเดตการจองสำเร็จ');
   };
 
+  const handleImportOTABookings = (importedBookings: Omit<Booking, 'id' | 'status'>[]) => {
+    const newBookings: Booking[] = importedBookings.map(booking => ({
+      ...booking,
+      id: `OTA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      status: 'confirmed',
+      paymentStatus: booking.paymentStatus || 'unpaid'
+    }));
+    setBookings(prev => [...newBookings, ...prev]);
+    toast.success(`นำเข้า ${newBookings.length} การจองจาก OTA สำเร็จ`);
+  };
+
   // Fix: Implemented handleClearData function to clear transaction and booking data
   const handleClearData = () => {
     if (window.confirm('คุณต้องการล้างข้อมูลทั้งหมดใช่หรือไม่? ข้อมูลนี้ไม่สามารถกู้คืนได้')) {
@@ -453,13 +465,17 @@ const App: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <OCRUpload onTransactionDetected={addTransaction} label="Scan Income Slip" subLabel="Room Payments & Deposits" intent="INCOME" />
               <OCRUpload onTransactionDetected={addTransaction} label="Scan Expense Receipt" subLabel="Bills, Supplies & Maintenance" intent="EXPENSE" colorClass="bg-rose-500 shadow-rose-100 hover:bg-rose-600" />
-              <button 
+              <button
                 onClick={() => setView('frontdesk')}
                 className="bg-white border-2 border-dashed border-indigo-200 rounded-[2rem] p-5 flex items-center justify-center gap-3 text-indigo-400 hover:border-indigo-400 hover:bg-indigo-50 transition-all group lg:col-span-1 md:col-span-2"
               >
                 <span className="text-2xl group-hover:scale-125 transition-transform">🛎️</span>
                 <span className="text-sm font-black uppercase tracking-widest">Check-in Guest</span>
               </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <OTAImport onImportBookings={handleImportOTABookings} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

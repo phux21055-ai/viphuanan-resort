@@ -385,7 +385,7 @@ const App: React.FC = () => {
       .filter(b => (b.status === 'confirmed' || b.status === 'pending' || b.status === 'locked') && b.checkIn >= today)
       .sort((a, b) => a.checkIn.localeCompare(b.checkIn))[0];
     const nextDeparture = bookings
-      .filter(b => b.status === 'checked_in' && b.checkOut >= today)
+      .filter(b => (b.status === 'checked_in' || b.status === 'confirmed') && b.checkOut >= today)
       .sort((a, b) => a.checkOut.localeCompare(b.checkOut))[0];
     return { nextArrival, nextDeparture };
   }, [bookings]);

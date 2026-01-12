@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { Transaction, TransactionType } from '../types';
+import { exportToCSV } from '../utils/exportCSV';
+import toast from 'react-hot-toast';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -62,8 +64,30 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
     );
   }
 
+  const handleExportFilteredCSV = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    exportToCSV(filteredTransactions, `transactions-filtered-${dateStr}.csv`);
+    toast.success(`ส่งออก ${filteredTransactions.length} รายการสำเร็จ`);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header with Export Button */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800">รายการเดินบัญชี</h2>
+          <p className="text-xs text-slate-400 font-bold mt-1">ทั้งหมด {transactions.length} รายการ</p>
+        </div>
+        {filteredTransactions.length > 0 && (
+          <button
+            onClick={handleExportFilteredCSV}
+            className="bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2"
+          >
+            <span>📊</span> ส่งออก CSV
+          </button>
+        )}
+      </div>
+
       {/* Dynamic Search Box */}
       <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-4">
         <div className="relative">

@@ -12,6 +12,62 @@
             font-family: 'Prompt', 'Inter', sans-serif;
             background-color: #f8fafc;
         }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background-color: white !important;
+            }
+
+            /* Hide navigation and non-essential elements */
+            nav,
+            button:not(.print-keep),
+            .no-print {
+                display: none !important;
+            }
+
+            /* Adjust layout for printing */
+            .min-h-screen {
+                min-height: auto !important;
+            }
+
+            /* Remove padding for main content */
+            main {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Print page breaks */
+            .page-break {
+                page-break-after: always;
+            }
+
+            /* Ensure good contrast */
+            * {
+                color: black !important;
+                background: white !important;
+            }
+
+            /* Keep borders visible */
+            .border {
+                border-color: #000 !important;
+            }
+
+            /* Optimize text for print */
+            body {
+                font-size: 12pt !important;
+                line-height: 1.5 !important;
+            }
+
+            h1, h2, h3, h4, h5, h6 {
+                page-break-after: avoid;
+            }
+
+            /* Ensure tables don't break across pages */
+            table, figure {
+                page-break-inside: avoid;
+            }
+        }
     </style>
 </head>
 <body>

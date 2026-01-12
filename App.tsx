@@ -25,6 +25,7 @@ import CameraCapture from './components/CameraCapture';
 import { processReceiptOCR } from './services/geminiService';
 import { saveToMongo, loadFromMongo } from './services/mongoService';
 import toast, { Toaster } from 'react-hot-toast';
+import { exportToCSV, exportBookingsToCSV } from './utils/exportCSV';
 
 const STORAGE_KEY = 'resort_finance_data_v2.7';
 const SETTINGS_KEY = 'resort_settings_v2.7';
@@ -254,8 +255,21 @@ const App: React.FC = () => {
       setBookings([]);
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(BOOKINGS_KEY);
-      alert('ล้างข้อมูลสำเร็จ');
+      toast.success('ล้างข้อมูลสำเร็จ');
     }
+  };
+
+  // CSV Export handlers
+  const handleExportCSV = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    exportToCSV(transactions, `transactions-${dateStr}.csv`);
+    toast.success('ส่งออกข้อมูลเป็น CSV สำเร็จ');
+  };
+
+  const handleExportBookingsCSV = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    exportBookingsToCSV(bookings, `bookings-${dateStr}.csv`);
+    toast.success('ส่งออกข้อมูลการจองสำเร็จ');
   };
 
   // Manual data export for cross-device transfer
@@ -498,12 +512,14 @@ const App: React.FC = () => {
         {view === 'pms' && <PMSIntegration bookings={bookings} transactions={transactions} onAddTransaction={addTransaction} />}
         
         {view === 'settings' && (
-          <Settings 
-            settings={settings} 
-            onUpdate={setSettings} 
+          <Settings
+            settings={settings}
+            onUpdate={setSettings}
             onClearData={handleClearData}
             onExport={handleExportData}
             onImport={handleImportData}
+            onExportCSV={handleExportCSV}
+            onExportBookingsCSV={handleExportBookingsCSV}
           />
         )}
       </main>

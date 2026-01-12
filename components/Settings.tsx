@@ -15,9 +15,11 @@ interface SettingsProps {
   onClearData: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
+  onExportCSV?: () => void;
+  onExportBookingsCSV?: () => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onClearData, onExport, onImport }) => {
+const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onClearData, onExport, onImport, onExportCSV, onExportBookingsCSV }) => {
   const handleChange = (field: string, value: any) => {
     onUpdate({ ...settings, [field]: value });
   };
@@ -142,19 +144,21 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onClearData, on
             </div>
 
             {/* Manual Data Sync Section */}
-            <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100">
-              <h3 className="text-sm font-black text-emerald-800 flex items-center gap-2 mb-4">
-                <span>🔁</span> ซิงก์ข้อมูลระหว่างเครื่อง (Manual)
-              </h3>
-              <p className="text-[10px] text-emerald-600 font-bold mb-4">
-                ส่งออก/นำเข้าข้อมูลเป็นไฟล์ .json เพื่อย้ายข้อมูลไปยังเครื่องอื่นได้อย่างปลอดภัย
-              </p>
+            <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100 space-y-4">
+              <div>
+                <h3 className="text-sm font-black text-emerald-800 flex items-center gap-2 mb-2">
+                  <span>🔁</span> ซิงก์ข้อมูลระหว่างเครื่อง
+                </h3>
+                <p className="text-[10px] text-emerald-600 font-bold">
+                  ส่งออก/นำเข้าข้อมูลเป็นไฟล์ .json เพื่อย้ายข้อมูลไปยังเครื่องอื่น
+                </p>
+              </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={onExport}
                   className="flex-1 bg-emerald-600 text-white py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100"
                 >
-                  ส่งออกข้อมูล (Export)
+                  📦 ส่งออก JSON
                 </button>
                 <label className="flex-1">
                   <input
@@ -164,14 +168,35 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onClearData, on
                     onChange={(e) => {
                       const file = e.target.files && e.target.files[0];
                       if (file) onImport(file);
-                      // reset so selecting the same file again triggers onChange
                       e.currentTarget.value = '';
                     }}
                   />
                   <div className="w-full text-center cursor-pointer bg-white text-emerald-700 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-emerald-200 hover:border-emerald-400 transition-all">
-                    นำเข้าข้อมูล (Import)
+                    📥 นำเข้า JSON
                   </div>
                 </label>
+              </div>
+
+              <div className="border-t border-emerald-200 pt-4">
+                <h4 className="text-xs font-black text-emerald-700 mb-2">📊 ส่งออกเป็น CSV (Excel)</h4>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {onExportCSV && (
+                    <button
+                      onClick={onExportCSV}
+                      className="flex-1 bg-white text-emerald-600 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight hover:bg-emerald-50 transition-all border border-emerald-200"
+                    >
+                      📝 รายการเดินบัญชี
+                    </button>
+                  )}
+                  {onExportBookingsCSV && (
+                    <button
+                      onClick={onExportBookingsCSV}
+                      className="flex-1 bg-white text-emerald-600 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight hover:bg-emerald-50 transition-all border border-emerald-200"
+                    >
+                      🏨 การจองห้องพัก
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

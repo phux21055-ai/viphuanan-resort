@@ -7,7 +7,20 @@ export interface MongoData {
   settings: any;
 }
 
+// Check if running on production (Vercel)
+const isProduction = () => {
+  return typeof window !== 'undefined' &&
+         (window.location.hostname.includes('vercel.app') ||
+          window.location.hostname.includes('yourdomain.com'));
+};
+
 export async function saveToMongo(data: MongoData) {
+  // Skip MongoDB on local development
+  if (!isProduction()) {
+    console.log('🔧 Local dev: Using localStorage only');
+    return { success: true, local: true };
+  }
+
   try {
     const response = await fetch(`${API_BASE}/data`, {
       method: 'POST',
@@ -24,6 +37,12 @@ export async function saveToMongo(data: MongoData) {
 }
 
 export async function loadFromMongo(): Promise<MongoData | null> {
+  // Skip MongoDB on local development
+  if (!isProduction()) {
+    console.log('🔧 Local dev: Using localStorage only');
+    return null;
+  }
+
   try {
     const response = await fetch(`${API_BASE}/data`);
 
@@ -43,6 +62,10 @@ export async function loadFromMongo(): Promise<MongoData | null> {
 }
 
 export async function syncWithMongo(localData: MongoData) {
+  if (!isProduction()) {
+    return false;
+  }
+
   try {
     // Save current data to MongoDB
     await saveToMongo({

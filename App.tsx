@@ -23,6 +23,7 @@ import FrontDesk from './components/FrontDesk';
 import Settings from './components/Settings';
 import CameraCapture from './components/CameraCapture';
 import OTAImport from './components/OTAImport';
+import SlipScanner from './components/SlipScanner';
 import { processReceiptOCR } from './services/geminiService';
 import { saveToMongo, loadFromMongo } from './services/mongoService';
 import toast, { Toaster } from 'react-hot-toast';
@@ -62,7 +63,7 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [view, setView] = useState<'dashboard' | 'transactions' | 'pms' | 'archive' | 'frontdesk' | 'settings'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'transactions' | 'pms' | 'archive' | 'frontdesk' | 'settings' | 'slipscanner'>('dashboard');
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [isQuickCameraOpen, setIsQuickCameraOpen] = useState(false);
   const [isQuickProcessing, setIsQuickProcessing] = useState(false);
@@ -452,6 +453,7 @@ const App: React.FC = () => {
         <div className="space-y-1.5 flex-1">
           <button onClick={() => setView('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${view === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><span>📊</span> แดชบอร์ด</button>
           <button onClick={() => setView('frontdesk')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${view === 'frontdesk' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><span>🛎️</span> หน้าเช็คอิน</button>
+          <button onClick={() => setView('slipscanner')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${view === 'slipscanner' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><span>📸</span> สแกนสลิป AI</button>
           <button onClick={() => setView('transactions')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${view === 'transactions' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><span>📝</span> รายการเดินบัญชี</button>
           <button onClick={() => setView('archive')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${view === 'archive' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><span>☁️</span> คลังหลักฐาน</button>
           <button onClick={() => setView('pms')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${view === 'pms' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><span>🏨</span> ระบบจอง (PMS)</button>
@@ -536,7 +538,9 @@ const App: React.FC = () => {
         )}
 
         {view === 'pms' && <PMSIntegration bookings={bookings} transactions={transactions} onAddTransaction={addTransaction} onUpdateBooking={handleUpdateBooking} />}
-        
+
+        {view === 'slipscanner' && <SlipScanner onTransactionScanned={addTransaction} />}
+
         {view === 'settings' && (
           <Settings
             settings={settings}

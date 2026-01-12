@@ -12,6 +12,10 @@ interface TransactionListProps {
 const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelete, onReconcile, onViewImage }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | TransactionType>('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const filteredTransactions = transactions.filter(tx => {
     const guestName = tx.guestData ? `${tx.guestData.firstNameTH} ${tx.guestData.lastNameTH}`.toLowerCase() : '';
@@ -26,8 +30,25 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
       tx.amount.toString().includes(searchTerm);
 
     const matchesType = filterType === 'ALL' || tx.type === filterType;
-    return matchesSearch && matchesType;
+
+    // Date range filter
+    const matchesDateRange = () => {
+      if (!startDate && !endDate) return true;
+      const txDate = new Date(tx.date);
+      if (startDate && new Date(startDate) > txDate) return false;
+      if (endDate && new Date(endDate) < txDate) return false;
+      return true;
+    };
+
+    return matchesSearch && matchesType && matchesDateRange();
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   if (transactions.length === 0) {
     return (
@@ -55,14 +76,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
           />
           <svg className="w-5 h-5 text-slate-300 absolute left-4 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {['ALL', TransactionType.INCOME, TransactionType.EXPENSE].map((type) => (
             <button
               key={type}
-              onClick={() => setFilterType(type as any)}
+              onClick={() => {
+                setFilterType(type as any);
+                setCurrentPage(1);
+              }}
               className={`px-6 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
-                filterType === type 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                filterType === type
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
                   : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
               }`}
             >
@@ -70,11 +94,42 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
             </button>
           ))}
         </div>
+
+        {/* Date Range Filter */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">จากวันที่</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-slate-50 border-none rounded-xl py-2.5 px-3 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">ถึงวันที่</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-slate-50 border-none rounded-xl py-2.5 px-3 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        {(startDate || endDate) && (
+          <button
+            onClick={() => { setStartDate(''); setEndDate(''); setCurrentPage(1); }}
+            className="text-[10px] text-rose-500 font-bold hover:underline"
+          >
+            ล้างตัวกรอง
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">
-        {filteredTransactions.length > 0 ? (
-          filteredTransactions.map((tx) => (
+        {paginatedTransactions.length > 0 ? (
+          paginatedTransactions.map((tx) => (
             <div 
               key={tx.id} 
               className={`bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-5 hover:shadow-lg transition-all active:scale-[0.99] ${tx.isReconciled ? 'bg-slate-50/50' : ''}`}
@@ -153,6 +208,52 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100">
+          <p className="text-[11px] text-slate-400 font-bold">
+            แสดง {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} จาก {filteredTransactions.length} รายการ
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-xl text-[10px] font-black bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              ← ก่อนหน้า
+            </button>
+            <div className="flex gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                .map((page, idx, arr) => (
+                  <React.Fragment key={page}>
+                    {idx > 0 && arr[idx - 1] !== page - 1 && (
+                      <span className="px-2 text-slate-300">...</span>
+                    )}
+                    <button
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all ${
+                        currentPage === page
+                          ? 'bg-indigo-600 text-white shadow-lg'
+                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </React.Fragment>
+                ))}
+            </div>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-xl text-[10px] font-black bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              ถัดไป →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { processIDCardOCR } from '../services/geminiService';
 import { GuestData, TransactionType, Category, CustomerType, Booking } from '../types';
 import PrintableDocument from './PrintableDocument';
 import CameraCapture from './CameraCapture';
+import toast from 'react-hot-toast';
 
 interface FrontDeskProps {
   onCheckIn: (data: { 
@@ -51,8 +52,9 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
     try {
       const result = await processIDCardOCR(base64Data);
       setGuest(result);
+      toast.success("สแกนบัตรประชาชนสำเร็จ!");
     } catch (err: any) {
-      alert(err.message || "สแกนไม่สำเร็จ กรุณาลองใหม่หรือพิมพ์ข้อมูลเอง");
+      toast.error(err.message || "สแกนไม่สำเร็จ กรุณาลองใหม่หรือพิมพ์ข้อมูลเอง");
     } finally {
       setIsScanning(false);
     }
@@ -72,7 +74,7 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
 
   const handleCompleteCheckIn = () => {
     if (!guest || !roomNumber || !amount || !checkInDate || !checkOutDate) {
-      alert("กรุณากรอกข้อมูลให้ครบถ้วนก่อนเช็คอิน");
+      toast.error("กรุณากรอกข้อมูลให้ครบถ้วนก่อนเช็คอิน");
       return;
     }
     onCheckIn({
@@ -84,13 +86,13 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
       checkIn: checkInDate,
       checkOut: checkOutDate
     });
-    alert("เช็คอินสำเร็จ!");
+    toast.success("เช็คอินสำเร็จ!");
     resetForm();
   };
 
   const handleSaveQuickBooking = () => {
     if (!qbGuestName || !roomNumber || !amount) {
-      alert("กรุณากรอกชื่อและห้องพัก");
+      toast.error("กรุณากรอกชื่อและห้องพัก");
       return;
     }
 
@@ -118,7 +120,7 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
       totalAmount: parseFloat(amount),
       guestDetails
     });
-    alert("ล็อคห้องสำเร็จ! ระบบจะล็อคห้องไว้เป็นเวลา 1 ชั่วโมงเพื่อรอแขกเข้าพักหรือโอนเงิน");
+    toast.success("ล็อคห้องสำเร็จ! ระบบจะล็อคห้องไว้ 1 ชั่วโมง");
     resetForm();
   };
 

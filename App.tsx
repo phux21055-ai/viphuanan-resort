@@ -213,6 +213,91 @@ const App: React.FC = () => {
     }
   };
 
+  // Manual data export for cross-device transfer
+  const handleExportData = () => {
+    try {
+      const payload = {
+        app: 'viphuanan-resort-finance',
+        version: '2.7',
+        exportedAt: new Date().toISOString(),
+        settings,
+        transactions,
+        bookings
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `resort-data-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert('ไม่สามารถส่งออกข้อมูลได้');
+    }
+  };
+
+  // Manual data import and merge
+  const handleImportData = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = String(reader.result || '');
+        const data = JSON.parse(text);
+
+        if (!data || typeof data !== 'object') throw new Error('ไฟล์ไม่ถูกต้อง');
+
+        const importedTransactions: any[] = Array.isArray(data.transactions) ? data.transactions : [];
+        const importedBookings: any[] = Array.isArray(data.bookings) ? data.bookings : [];
+        const importedSettings: any = data.settings || {};
+
+        // Merge transactions by id (dedupe)
+        setTransactions(prev => {
+          const map = new Map<string, any>();
+          prev.forEach(t => map.set(t.id, t));
+          importedTransactions.forEach((t: any) => {
+            if (t && t.id && !map.has(t.id)) {
+              map.set(t.id, t);
+            }
+          });
+          return Array.from(map.values()) as any;
+        });
+
+        // Merge bookings by id (dedupe)
+        setBookings(prev => {
+          const map = new Map<string, any>();
+          prev.forEach(b => map.set(b.id, b));
+          importedBookings.forEach((b: any) => {
+            if (b && b.id && !map.has(b.id)) {
+              map.set(b.id, b);
+            }
+          });
+          return Array.from(map.values()) as any;
+        });
+
+        // Merge settings (shallow) with confirmation
+        if (importedSettings && Object.keys(importedSettings).length > 0) {
+          const ok = window.confirm('ต้องการนำเข้าการตั้งค่าระบบจากไฟล์นี้หรือไม่?');
+          if (ok) setSettings((prev: any) => ({ ...prev, ...importedSettings }));
+        }
+
+        const tCount = Array.isArray(data.transactions) ? data.transactions.length : 0;
+        const bCount = Array.isArray(data.bookings) ? data.bookings.length : 0;
+        alert(`นำเข้าข้อมูลสำเร็จ: รายการเดินบัญชี ${tCount} รายการ, การจอง ${bCount} รายการ`);
+      } catch (err) {
+        console.error(err);
+        alert('ไฟล์นำเข้าไม่ถูกต้อง หรืออ่านไม่สำเร็จ');
+      }
+    };
+    reader.onerror = () => {
+      alert('ไม่สามารถอ่านไฟล์ได้');
+    };
+    reader.readAsText(file);
+  };
+
   const occupancyInsights = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const nextArrival = bookings
@@ -352,7 +437,13 @@ const App: React.FC = () => {
         {view === 'pms' && <PMSIntegration bookings={bookings} transactions={transactions} onAddTransaction={addTransaction} />}
         
         {view === 'settings' && (
-          <Settings settings={settings} onUpdate={setSettings} onClearData={handleClearData} />
+          <Settings 
+            settings={settings} 
+            onUpdate={setSettings} 
+            onClearData={handleClearData}
+            onExport={handleExportData}
+            onImport={handleImportData}
+          />
         )}
       </main>
 

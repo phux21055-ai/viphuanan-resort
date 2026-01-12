@@ -12,9 +12,11 @@ interface SettingsProps {
   };
   onUpdate: (newSettings: any) => void;
   onClearData: () => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onClearData }) => {
+const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onClearData, onExport, onImport }) => {
   const handleChange = (field: string, value: any) => {
     onUpdate({ ...settings, [field]: value });
   };
@@ -135,6 +137,40 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onClearData }) 
                     API Connected via Environment Variable
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Manual Data Sync Section */}
+            <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100">
+              <h3 className="text-sm font-black text-emerald-800 flex items-center gap-2 mb-4">
+                <span>🔁</span> ซิงก์ข้อมูลระหว่างเครื่อง (Manual)
+              </h3>
+              <p className="text-[10px] text-emerald-600 font-bold mb-4">
+                ส่งออก/นำเข้าข้อมูลเป็นไฟล์ .json เพื่อย้ายข้อมูลไปยังเครื่องอื่นได้อย่างปลอดภัย
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={onExport}
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100"
+                >
+                  ส่งออกข้อมูล (Export)
+                </button>
+                <label className="flex-1">
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files && e.target.files[0];
+                      if (file) onImport(file);
+                      // reset so selecting the same file again triggers onChange
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                  <div className="w-full text-center cursor-pointer bg-white text-emerald-700 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-emerald-200 hover:border-emerald-400 transition-all">
+                    นำเข้าข้อมูล (Import)
+                  </div>
+                </label>
               </div>
             </div>
 

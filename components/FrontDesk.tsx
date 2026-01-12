@@ -93,13 +93,30 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
       alert("กรุณากรอกชื่อและห้องพัก");
       return;
     }
+
+    // Create proper GuestData object for quick booking
+    const guestDetails: GuestData = {
+      idNumber: '',
+      title: '',
+      firstNameTH: qbGuestName,
+      lastNameTH: '',
+      firstNameEN: '',
+      lastNameEN: '',
+      address: '',
+      dob: '',
+      issueDate: '',
+      expiryDate: '',
+      phone: qbPhone,
+      customerType: CustomerType.BOOKING
+    };
+
     onQuickBooking({
       guestName: qbGuestName,
       roomNumber,
       checkIn: checkInDate,
       checkOut: checkOutDate,
       totalAmount: parseFloat(amount),
-      guestDetails: { firstNameTH: qbGuestName, lastNameTH: '', phone: qbPhone } as any
+      guestDetails
     });
     alert("ล็อคห้องสำเร็จ! ระบบจะล็อคห้องไว้เป็นเวลา 1 ชั่วโมงเพื่อรอแขกเข้าพักหรือโอนเงิน");
     resetForm();

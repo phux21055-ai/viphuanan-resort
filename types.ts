@@ -69,6 +69,11 @@ export interface Booking {
   status: 'confirmed' | 'checked_out' | 'pending' | 'checked_in' | 'locked';
   guestDetails?: GuestData;
   lockedUntil?: string; // ISO string for timestamp
+  paidAmount?: number; // จำนวนเงินที่ชำระแล้ว
+  depositAmount?: number; // จำนวนเงินมัดจำ
+  nights?: number; // จำนวนคืน
+  pricePerNight?: number; // ราคาต่อคืน
+  paymentStatus?: 'unpaid' | 'deposit' | 'paid'; // สถานะการชำระเงิน
 }
 
 export interface OCRResult {

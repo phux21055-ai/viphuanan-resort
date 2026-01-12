@@ -5,6 +5,7 @@ import { GuestData, TransactionType, Category, CustomerType, Booking } from '../
 import PrintableDocument from './PrintableDocument';
 import CameraCapture from './CameraCapture';
 import toast from 'react-hot-toast';
+import { getRoomTypeByNumber, calculateNights, calculateTotalAmount, calculateDeposit } from '../config/rooms';
 
 interface FrontDeskProps {
   onCheckIn: (data: { 
@@ -39,11 +40,51 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
   const [qbGuestName, setQbGuestName] = useState('');
   const [qbPhone, setQbPhone] = useState('');
 
+  // Payment calculation fields
+  const [nights, setNights] = useState(0);
+  const [pricePerNight, setPricePerNight] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [depositAmount, setDepositAmount] = useState(0);
+  const [paymentType, setPaymentType] = useState<'full' | 'deposit'>('full');
+
   useEffect(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     setCheckOutDate(tomorrow.toISOString().split('T')[0]);
   }, []);
+
+  // Auto-calculate payment when room, checkIn, or checkOut changes
+  useEffect(() => {
+    if (!roomNumber || !checkInDate || !checkOutDate) {
+      setNights(0);
+      setPricePerNight(0);
+      setTotalAmount(0);
+      setDepositAmount(0);
+      setAmount('0');
+      return;
+    }
+
+    const roomType = getRoomTypeByNumber(roomNumber);
+    if (!roomType) {
+      setNights(0);
+      setPricePerNight(0);
+      setTotalAmount(0);
+      setDepositAmount(0);
+      setAmount('0');
+      return;
+    }
+
+    const calculatedNights = calculateNights(checkInDate, checkOutDate);
+    const calculatedTotal = calculateTotalAmount(roomNumber, checkInDate, checkOutDate);
+    const calculatedDeposit = calculateDeposit(calculatedTotal);
+
+    setNights(calculatedNights);
+    setPricePerNight(roomType.pricePerNight);
+    setTotalAmount(calculatedTotal);
+    setDepositAmount(calculatedDeposit);
+    setAmount(calculatedTotal.toString());
+    setDescription(`ค่าบริการห้องพัก ${roomType.name} - ${calculatedNights} คืน`);
+  }, [roomNumber, checkInDate, checkOutDate]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,7 +132,7 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
   };
 
   const handleSaveQuickBooking = () => {
-    if (!qbGuestName || !roomNumber || !amount) {
+    if (!qbGuestName || !roomNumber || totalAmount === 0) {
       toast.error("กรุณากรอกชื่อและห้องพัก");
       return;
     }
@@ -117,8 +158,12 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
       roomNumber,
       checkIn: checkInDate,
       checkOut: checkOutDate,
-      totalAmount: parseFloat(amount),
-      guestDetails
+      totalAmount: totalAmount,
+      guestDetails,
+      nights: nights,
+      pricePerNight: pricePerNight,
+      depositAmount: depositAmount,
+      paymentStatus: 'unpaid'
     });
     toast.success("ล็อคห้องสำเร็จ! ระบบจะล็อคห้องไว้ 1 ชั่วโมง");
     resetForm();
@@ -188,13 +233,41 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
                 <div className="lg:col-span-2 bg-indigo-600 rounded-[3rem] p-8 text-white flex flex-col gap-6">
                    <h4 className="font-black text-xl">เช็คอินเข้าพัก</h4>
                    <div className="space-y-4">
-                      <input type="date" value={checkInDate} onChange={e => setCheckInDate(e.target.value)} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
-                      <input type="date" value={checkOutDate} onChange={e => setCheckOutDate(e.target.value)} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
-                      <div className="grid grid-cols-2 gap-3">
-                        <input placeholder="เลขห้อง" value={roomNumber} onChange={e => setRoomNumber(e.target.value)} className="bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
-                        <input placeholder="ราคา" type="number" value={amount} onChange={e => setAmount(e.target.value)} className="bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase opacity-70">วันที่เข้าพัก</label>
+                        <input type="date" value={checkInDate} onChange={e => setCheckInDate(e.target.value)} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
                       </div>
-                      <button onClick={handleCompleteCheckIn} className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all">ยืนยันเช็คอิน</button>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase opacity-70">วันที่ออก</label>
+                        <input type="date" value={checkOutDate} onChange={e => setCheckOutDate(e.target.value)} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase opacity-70">เลขห้อง</label>
+                        <input placeholder="101-105, 201-204, 301-302, V1-V3" value={roomNumber} onChange={e => setRoomNumber(e.target.value.toUpperCase())} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20 placeholder:text-white/30" />
+                      </div>
+
+                      {/* Payment Calculation Display */}
+                      {totalAmount > 0 && (
+                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 space-y-2.5 border border-white/20">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="opacity-80">ห้องพัก {roomNumber}</span>
+                            <span className="font-black">฿{pricePerNight.toLocaleString()} / คืน</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="opacity-80">จำนวนคืน</span>
+                            <span className="font-black">{nights} คืน</span>
+                          </div>
+                          <div className="h-[1px] bg-white/20"></div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-black">ยอดที่ต้องชำระ</span>
+                            <span className="text-lg font-black">฿{totalAmount.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <button onClick={handleCompleteCheckIn} disabled={!guest || totalAmount === 0} className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        {totalAmount > 0 ? `เช็คอิน - ชำระ ฿${totalAmount.toLocaleString()}` : 'กรุณากรอกเลขห้อง'}
+                      </button>
                    </div>
                 </div>
               </div>
@@ -230,12 +303,36 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
                  <p className="text-[11px] font-bold opacity-80 leading-relaxed uppercase tracking-wide">
                    ระบบจะทำการล็อคห้องพักนี้ไว้ 1 ชั่วโมง หากไม่มีการชำระเงินมัดจำหรือเช็คอิน ระบบจะยกเลิกการจองและปลดล็อคห้องโดยอัตโนมัติ
                  </p>
-                 <div className="grid grid-cols-2 gap-3 mt-8">
-                    <input placeholder="เลขห้อง" value={roomNumber} onChange={e => setRoomNumber(e.target.value)} className="bg-white/20 p-4 rounded-2xl text-xs font-bold border-none placeholder:text-white/50" />
-                    <input placeholder="ยอดรวม" value={amount} onChange={e => setAmount(e.target.value)} className="bg-white/20 p-4 rounded-2xl text-xs font-bold border-none placeholder:text-white/50" />
+                 <div className="mt-8">
+                    <input placeholder="เลขห้อง (101-105, 201-204, 301-302, V1-V3)" value={roomNumber} onChange={e => setRoomNumber(e.target.value.toUpperCase())} className="w-full bg-white/20 p-4 rounded-2xl text-xs font-bold border-none placeholder:text-white/50" />
                  </div>
+
+                 {/* Payment Calculation Display */}
+                 {totalAmount > 0 && (
+                   <div className="mt-6 bg-white/10 backdrop-blur-md rounded-2xl p-6 space-y-3 border border-white/20">
+                     <div className="flex justify-between items-center text-xs">
+                       <span className="opacity-80">ห้องพัก {roomNumber}</span>
+                       <span className="font-black">฿{pricePerNight.toLocaleString()} / คืน</span>
+                     </div>
+                     <div className="flex justify-between items-center text-xs">
+                       <span className="opacity-80">จำนวนคืน</span>
+                       <span className="font-black">{nights} คืน</span>
+                     </div>
+                     <div className="h-[1px] bg-white/20"></div>
+                     <div className="flex justify-between items-center">
+                       <span className="text-sm font-black">ยอดรวมทั้งหมด</span>
+                       <span className="text-lg font-black">฿{totalAmount.toLocaleString()}</span>
+                     </div>
+                     <div className="flex justify-between items-center text-xs opacity-70">
+                       <span>เงินมัดจำ (30%)</span>
+                       <span className="font-bold">฿{depositAmount.toLocaleString()}</span>
+                     </div>
+                   </div>
+                 )}
                </div>
-               <button onClick={handleSaveQuickBooking} className="w-full bg-white text-amber-600 py-4 rounded-2xl font-black mt-8 shadow-xl hover:bg-slate-50 transition-all active:scale-95">ล็อคห้องทันที (1 ชม.)</button>
+               <button onClick={handleSaveQuickBooking} disabled={totalAmount === 0} className="w-full bg-white text-amber-600 py-4 rounded-2xl font-black mt-8 shadow-xl hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                 {totalAmount > 0 ? `ล็อคห้อง - ฿${totalAmount.toLocaleString()}` : 'กรุณากรอกเลขห้อง'}
+               </button>
             </div>
           </div>
         )}

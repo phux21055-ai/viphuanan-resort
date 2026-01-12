@@ -6,6 +6,7 @@ interface PMSIntegrationProps {
   bookings: Booking[];
   transactions: Transaction[];
   onAddTransaction: (t: Omit<Transaction, 'id'>) => void;
+  onUpdateBooking: (bookingId: string, updates: Partial<Booking>) => void;
 }
 
 const CountdownTimer: React.FC<{ expiry: string }> = ({ expiry }) => {
@@ -30,20 +31,36 @@ const CountdownTimer: React.FC<{ expiry: string }> = ({ expiry }) => {
   return <span className="font-black text-amber-600">{timeLeft}</span>;
 };
 
-const PMSIntegration: React.FC<PMSIntegrationProps> = ({ bookings, transactions, onAddTransaction }) => {
+const PMSIntegration: React.FC<PMSIntegrationProps> = ({ bookings, transactions, onAddTransaction, onUpdateBooking }) => {
   const isPaid = (bookingId: string) => {
     return transactions.some(tx => tx.description.includes(bookingId) && tx.type === TransactionType.INCOME);
   };
 
-  const handleQuickAdd = (booking: Booking) => {
+  const handleQuickAdd = (booking: Booking, paymentType: 'full' | 'deposit') => {
+    const amount = paymentType === 'full' ? booking.totalAmount : (booking.depositAmount || booking.totalAmount * 0.3);
+
     onAddTransaction({
       date: new Date().toISOString().split('T')[0],
-      amount: booking.totalAmount,
+      amount: amount,
       type: TransactionType.INCOME,
       category: Category.ROOM_REVENUE,
-      description: `Payment for Booking ${booking.id} - ${booking.guestName}`,
+      description: `${paymentType === 'full' ? 'Full Payment' : 'Deposit'} for Booking ${booking.id} - ${booking.guestName}`,
       isReconciled: true
     });
+
+    // Update booking status from locked to confirmed after payment
+    if (booking.status === 'locked') {
+      onUpdateBooking(booking.id, {
+        status: 'confirmed',
+        paymentStatus: paymentType === 'full' ? 'paid' : 'deposit',
+        paidAmount: amount
+      });
+    } else {
+      onUpdateBooking(booking.id, {
+        paymentStatus: paymentType === 'full' ? 'paid' : 'deposit',
+        paidAmount: (booking.paidAmount || 0) + amount
+      });
+    }
   };
 
   const getStatusBadge = (booking: Booking) => {
@@ -118,23 +135,36 @@ const PMSIntegration: React.FC<PMSIntegrationProps> = ({ bookings, transactions,
                   </div>
                 </div>
 
-                <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-8">
+                <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-8">
                   <div className="text-right">
                     <p className="text-lg font-black text-slate-800 leading-tight">฿{booking.totalAmount.toLocaleString()}</p>
+                    {booking.nights && booking.pricePerNight && (
+                      <p className="text-[9px] text-slate-400 font-medium">{booking.nights} คืน × ฿{booking.pricePerNight.toLocaleString()}</p>
+                    )}
                     <p className={`text-[9px] font-black uppercase tracking-[0.1em] mt-1 ${paid ? 'text-emerald-500' : 'text-amber-500'}`}>
                       {paid ? '● ชำระเงินเรียบร้อย' : booking.status === 'locked' ? '○ รอชำระมัดจำ' : '○ ค้างชำระ'}
                     </p>
                   </div>
 
                   {!paid && (
-                    <button 
-                      onClick={() => handleQuickAdd(booking)}
-                      className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-100 active:scale-95"
-                    >
-                      ลงบันทึกรับเงิน
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => handleQuickAdd(booking, 'full')}
+                        className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 transition-all shadow-lg shadow-slate-100 active:scale-95 whitespace-nowrap"
+                      >
+                        ชำระเต็ม ฿{booking.totalAmount.toLocaleString()}
+                      </button>
+                      {booking.depositAmount && (
+                        <button
+                          onClick={() => handleQuickAdd(booking, 'deposit')}
+                          className="bg-amber-500 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-amber-600 transition-all shadow-lg shadow-amber-100 active:scale-95 whitespace-nowrap"
+                        >
+                          มัดจำ ฿{booking.depositAmount.toLocaleString()}
+                        </button>
+                      )}
+                    </div>
                   )}
-                  
+
                   {paid && (
                     <div className="bg-emerald-500 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-100">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">

@@ -241,11 +241,21 @@ const App: React.FC = () => {
     const lockedUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour lock
     const newBooking: Booking = {
       ...bookingData,
-      id: `LOCK${Math.floor(Math.random() * 10000)}`,
+      id: `LOCK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       status: 'locked',
-      lockedUntil
+      lockedUntil,
+      paymentStatus: bookingData.paymentStatus || 'unpaid'
     };
     setBookings(prev => [newBooking, ...prev]);
+  };
+
+  const handleUpdateBooking = (bookingId: string, updates: Partial<Booking>) => {
+    setBookings(prev => prev.map(booking =>
+      booking.id === bookingId
+        ? { ...booking, ...updates }
+        : booking
+    ));
+    toast.success('อัพเดตการจองสำเร็จ');
   };
 
   // Fix: Implemented handleClearData function to clear transaction and booking data
@@ -509,7 +519,7 @@ const App: React.FC = () => {
           <CloudArchive transactions={transactions} onViewImage={(url) => setSelectedImage(url)} />
         )}
 
-        {view === 'pms' && <PMSIntegration bookings={bookings} transactions={transactions} onAddTransaction={addTransaction} />}
+        {view === 'pms' && <PMSIntegration bookings={bookings} transactions={transactions} onAddTransaction={addTransaction} onUpdateBooking={handleUpdateBooking} />}
         
         {view === 'settings' && (
           <Settings

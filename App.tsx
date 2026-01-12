@@ -23,6 +23,7 @@ import FrontDesk from './components/FrontDesk';
 import Settings from './components/Settings';
 import CameraCapture from './components/CameraCapture';
 import { processReceiptOCR } from './services/geminiService';
+import { saveToMongo, loadFromMongo } from './services/mongoService';
 
 const STORAGE_KEY = 'resort_finance_data_v2.7';
 const SETTINGS_KEY = 'resort_settings_v2.7';
@@ -87,16 +88,53 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Load data from MongoDB on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const mongoData = await loadFromMongo();
+        if (mongoData && mongoData.transactions) {
+          setTransactions(mongoData.transactions);
+          setBookings(mongoData.bookings || []);
+          setSettings(mongoData.settings || DEFAULT_SETTINGS);
+        }
+      } catch (error) {
+        console.error('Failed to load from MongoDB:', error);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Save to localStorage and MongoDB when data changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+
+    // Auto-sync to MongoDB (debounced)
+    const timer = setTimeout(() => {
+      saveToMongo({ transactions, bookings, settings }).catch(console.error);
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, [transactions]);
 
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+
+    const timer = setTimeout(() => {
+      saveToMongo({ transactions, bookings, settings }).catch(console.error);
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, [settings]);
 
   useEffect(() => {
     localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
+
+    const timer = setTimeout(() => {
+      saveToMongo({ transactions, bookings, settings }).catch(console.error);
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, [bookings]);
 
   const addTransaction = (t: Omit<Transaction, 'id'>) => {

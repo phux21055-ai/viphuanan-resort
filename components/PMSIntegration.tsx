@@ -125,9 +125,14 @@ const PMSIntegration: React.FC<PMSIntegrationProps> = ({ bookings, transactions,
                     <div className="flex items-center gap-3 mb-1">
                       <h4 className="font-black text-slate-800 text-base">Room {booking.roomNumber} - {booking.guestName}</h4>
                       {getStatusBadge(booking)}
+                      {booking.otaChannel && (
+                        <span className="bg-purple-100 text-purple-600 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight">
+                          {booking.otaChannel}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                       <span>Ref: {booking.id}</span>
+                       <span>Ref: {booking.confirmationNumber || booking.id}</span>
                        <span className="text-slate-200">|</span>
                        <span className="flex items-center gap-1.5"><span className="text-indigo-400">IN:</span> {new Date(booking.checkIn).toLocaleDateString('th-TH')}</span>
                        <span className="flex items-center gap-1.5"><span className="text-rose-400">OUT:</span> {new Date(booking.checkOut).toLocaleDateString('th-TH')}</span>

@@ -9,20 +9,35 @@ interface OTAImportProps {
 }
 
 interface OTABookingRow {
+  // Standard OTA export columns
   'Guest Name'?: string;
+  'Room'?: string;
   'Room Number'?: string;
+  'Channel'?: string;
+  'Check In Date'?: string;
+  'Check Out Date'?: string;
   'Check In'?: string;
   'Check Out'?: string;
+  'Room Type'?: string;
+  'Total'?: number;
   'Total Amount'?: number;
+  'Payment Total'?: number;
+  'Confirmation Number'?: string;
+  'Confirmation status'?: string;
   'Phone'?: string;
   'Email'?: string;
 
-  // Alternative column names
+  // Alternative Thai column names
   'ชื่อแขก'?: string;
   'ห้อง'?: string;
+  'ช่องทาง'?: string;
   'เข้าพัก'?: string;
   'ออก'?: string;
+  'ประเภทห้อง'?: string;
   'ยอดรวม'?: number;
+  'ยอดชำระ'?: number;
+  'เลขยืนยัน'?: string;
+  'สถานะ'?: string;
   'เบอร์โทร'?: string;
 }
 
@@ -60,12 +75,30 @@ const OTAImport: React.FC<OTAImportProps> = ({ onImportBookings }) => {
   };
 
   const parseBookingRow = (row: OTABookingRow): Omit<Booking, 'id' | 'status'> | null => {
-    // Support both English and Thai column names
+    // Support multiple column name variations
     const guestName = row['Guest Name'] || row['ชื่อแขก'] || '';
-    const roomNumber = String(row['Room Number'] || row['ห้อง'] || '').toUpperCase();
-    const checkIn = parseDate(row['Check In'] || row['เข้าพัก']);
-    const checkOut = parseDate(row['Check Out'] || row['ออก']);
+    const roomNumber = String(
+      row['Room'] ||
+      row['Room Number'] ||
+      row['ห้อง'] ||
+      ''
+    ).toUpperCase().trim();
+
+    const checkIn = parseDate(
+      row['Check In Date'] ||
+      row['Check In'] ||
+      row['เข้าพัก']
+    );
+
+    const checkOut = parseDate(
+      row['Check Out Date'] ||
+      row['Check Out'] ||
+      row['ออก']
+    );
+
     const phone = row['Phone'] || row['เบอร์โทร'] || '';
+    const confirmationNumber = row['Confirmation Number'] || row['เลขยืนยัน'] || '';
+    const channel = row['Channel'] || row['ช่องทาง'] || 'OTA';
 
     if (!guestName || !roomNumber || !checkIn || !checkOut) {
       return null;
@@ -76,8 +109,13 @@ const OTAImport: React.FC<OTAImportProps> = ({ onImportBookings }) => {
     const calculatedTotal = calculateTotalAmount(roomNumber, checkIn, checkOut);
     const roomType = getRoomTypeByNumber(roomNumber);
 
-    // Use provided amount or calculated amount
-    const totalAmount = row['Total Amount'] || row['ยอดรวม'] || calculatedTotal;
+    // Use provided amount or calculated amount (support multiple column names)
+    const totalAmount = row['Total'] ||
+                        row['Total Amount'] ||
+                        row['Payment Total'] ||
+                        row['ยอดรวม'] ||
+                        row['ยอดชำระ'] ||
+                        calculatedTotal;
     const depositAmount = calculateDeposit(totalAmount);
 
     return {
@@ -90,6 +128,8 @@ const OTAImport: React.FC<OTAImportProps> = ({ onImportBookings }) => {
       pricePerNight: roomType?.pricePerNight || 0,
       depositAmount,
       paymentStatus: 'unpaid',
+      otaChannel: channel,
+      confirmationNumber: confirmationNumber,
       guestDetails: {
         idNumber: '',
         title: '',
@@ -282,6 +322,23 @@ const OTAImport: React.FC<OTAImportProps> = ({ onImportBookings }) => {
               <div className="space-y-4">
                 {previewData.map((booking, index) => (
                   <div key={index} className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-indigo-100 text-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm">
+                          {index + 1}
+                        </div>
+                        {booking.otaChannel && (
+                          <div className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase">
+                            {booking.otaChannel}
+                          </div>
+                        )}
+                        {booking.confirmationNumber && (
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            Ref: {booking.confirmationNumber}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase mb-1">ชื่อแขก</p>

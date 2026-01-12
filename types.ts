@@ -74,6 +74,8 @@ export interface Booking {
   nights?: number; // จำนวนคืน
   pricePerNight?: number; // ราคาต่อคืน
   paymentStatus?: 'unpaid' | 'deposit' | 'paid'; // สถานะการชำระเงิน
+  otaChannel?: string; // ช่องทาง OTA (Booking.com, Agoda, etc.)
+  confirmationNumber?: string; // เลขยืนยันการจอง
 }
 
 export interface OCRResult {
